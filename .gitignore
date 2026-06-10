@@ -1,0 +1,48 @@
+# Environnements
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.claude/
+
+# Caches régénérables
+data/clean/
+*.npz
+
+# Données brutes lourdes (NE PAS versionner)
+data/raw/
+*.parquet
+*.csv
+*.pkl
+*.pkl.gz
+*.zip
+*.shp
+*.dbf
+*.shx
+*.prj
+*.cpg
+*.sbn
+*.sbx
+*.downloading
+*.crdownload
+
+# Données géo lourdes à la racine (boundaries, etc.)
+*.geojson
+*.parquet.baiduyun.p.downloading
+
+# Mais on garde les exports légers du projet
+!outputs/*.geojson
+!app/hexes_app.parquet
+
+# Divers
+.DS_Store
+*.pdf
+
+# Scripts brouillons (génération/validation)
+_test_load.py
+_env_probe.py
+_s2_dev.py
+_s2_schema.py
+_s3_dev.py
+_s3_h3test.py
+outputs/*.png

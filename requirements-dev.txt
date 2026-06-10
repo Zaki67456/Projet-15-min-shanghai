@@ -1,0 +1,23 @@
+# Stack complet pour exécuter les notebooks (collecte, grille, scoring) en local.
+# Installer dans le venv : pip install -r requirements-dev.txt
+geopandas
+pyogrio
+shapely
+pyproj
+h3
+mapclassify
+networkx
+pandas
+numpy
+scikit-learn
+statsmodels
+openpyxl
+pyarrow
+matplotlib
+folium
+pydeck
+streamlit
+jupyter
+nbconvert
+nbformat
+ipykernel

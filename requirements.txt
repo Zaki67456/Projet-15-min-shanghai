@@ -1,0 +1,8 @@
+# Dépendances de l'APP Streamlit (déploiement Streamlit Community Cloud).
+# L'app lit un parquet léger et reconstruit les hexagones depuis les IDs H3
+# -> pas besoin de geopandas/GDAL ici (voir requirements-dev.txt pour les notebooks).
+streamlit>=1.40
+pydeck>=0.9
+pandas>=2.2
+pyarrow>=15
+matplotlib>=3.8
