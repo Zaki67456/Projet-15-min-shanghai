@@ -28,12 +28,15 @@ import numpy as np, pandas as pd, geopandas as gpd, h3
 import matplotlib.pyplot as plt
 import statsmodels.formula.api as smf
 from config import DATA_CLEAN, OUTPUTS, H3_RES, CRITERIA, AFFORDABLE_LABEL
+from geo_utils import types_per_cell
 warnings.filterwarnings("ignore")
 WGS84 = "EPSG:4326"
 CRIT = list(CRITERIA)
 
 hexes = gpd.read_parquet(DATA_CLEAN / "hexes.parquet")
 prices = gpd.read_parquet(DATA_CLEAN / "prices.parquet")
+poi = gpd.read_parquet(DATA_CLEAN / "poi.parquet")
+transit = gpd.read_parquet(DATA_CLEAN / "transit.parquet")
 print(f"Hexagones: {len(hexes):,} (res {H3_RES}) | Points de prix: {len(prices):,}")
 print("Critères d'accès:", [CRITERIA[k]["label"] for k in CRIT])""")
 
@@ -123,10 +126,19 @@ code(r"""best = hexes[hexes["afford_type"] == "Accessible & abordable"].sort_val
 print(f"Corridors 'accessible & abordable' : {len(best):,} hexagones\n")
 print(best[["cell", "access_index", "price_per_m2", "value_score", "score_complet_7"]].head(12).to_string(index=False))""")
 
-md("## 8. Export enriched grid")
+md("## 8. Specific POI types per hexagon\nFor each criterion, list the concrete types of places present (e.g. *supermarché, épicerie, marché*) — surfaced in the app tooltip so the user sees exactly what is reachable.")
+code(r"""types = types_per_cell(poi, transit, CRITERIA, H3_RES)
+for k in CRIT:
+    hexes[f"types_{k}"] = hexes["cell"].map(types[k]).fillna("")
+print("Exemples de types (hexagone le mieux desservi) :")
+ex = hexes.sort_values("access_index", ascending=False).iloc[0]
+for k in CRIT:
+    print(f"  {CRITERIA[k]['label']:26} {ex[f'types_{k}'] or '—'}")""")
+
+md("## 9. Export enriched grid")
 code(r"""keep = (["cell", "clat", "clng", "baseline_score", "n_walk", "n_bike", "access_index",
          "price_per_m2", "n_price", "affordable", "afford_type", "value_score", "score_complet_7"]
-        + [f"acc_{k}" for k in CRIT])
+        + [f"acc_{k}" for k in CRIT] + [f"types_{k}" for k in CRIT])
 out = hexes[keep + ["geometry"]].copy()
 out.to_file(OUTPUTS / "hexes.geojson", driver="GeoJSON")
 out.to_parquet(DATA_CLEAN / "hexes_scored.parquet")

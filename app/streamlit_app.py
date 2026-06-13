@@ -35,10 +35,10 @@ df = load_data()
 
 # Indicateurs cartographiables (l'indice pondéré-marche en 1er = vue par défaut, vrai dégradé)
 METRICS = {
-    "Indice d'accessibilité /100 (pondéré marche)": ("access_index", 0, 100, "RdYlGn"),
-    "Score marche seule /6": ("n_walk", 0, 6, "RdYlGn"),
-    "Score complet /7 (+ logement abordable)": ("score_complet_7", 0, 7, "RdYlGn"),
-    "Score 15-min /6 (marche OU vélo)": ("baseline_score", 0, 6, "RdYlGn"),
+    "Indice d'accessibilité (pondéré marche)": ("access_index", 0, 100, "RdYlGn"),
+    "Score marche seule": ("n_walk", 0, 6, "RdYlGn"),
+    "Score complet (+ logement abordable)": ("score_complet_7", 0, 7, "RdYlGn"),
+    "Score 15-min (marche OU vélo)": ("baseline_score", 0, 6, "RdYlGn"),
     "Prix médian (¥/m²)": ("price_per_m2", None, None, "viridis_r"),
     "Value score (accès − prix)": ("value_score", -60, 60, "RdYlGn"),
 }
@@ -72,6 +72,8 @@ metric_label = st.sidebar.selectbox("Indicateur cartographié", list(METRICS))
 col, vmin, vmax, cmap_name = METRICS[metric_label]
 
 st.sidebar.markdown("### 🎯 Recommandeur « Où habiter ? »")
+st.sidebar.caption("👉 Coche la case ci-dessous, puis règle ton budget et tes besoins : "
+                   "la carte ne gardera que les quartiers qui te correspondent.")
 reco = st.sidebar.checkbox("Activer le filtre")
 budget = st.sidebar.slider("Budget max (¥/m²)", 2000, 150000, 35000, 1000)
 min_acc = st.sidebar.slider("Accessibilité minimale /100", 0, 100, 80, 5)
@@ -103,8 +105,11 @@ def build_tip(r):
              f"<b>Accessibilité :</b> {r['access_index']}/100 (15 min à pied/vélo)",
              "<i>Services accessibles en 15 min :</i>"]
     for k, (lab, _) in CRITERIA.items():
-        ok = bool(r.get(f"acc_{k}", False))
-        lines.append(f"{lab} : {'✅' if ok else '❌ &gt;15 min'}")
+        if bool(r.get(f"acc_{k}", False)):
+            t = str(r.get(f"types_{k}", "") or "")
+            lines.append(f"{lab} : ✅ {t}" if t else f"{lab} : ✅")
+        else:
+            lines.append(f"{lab} : ❌ &gt;15 min")
     return "<br/>".join(lines)
 
 
@@ -142,7 +147,7 @@ if reco:
 
 # ----------------------------- KPIs -----------------------------
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Score 15-min moyen", f"{df['baseline_score'].mean():.2f}/6")
+c1.metric("Accessibilité moyenne", f"{df['access_index'].mean():.0f}/100")
 c2.metric("Prix médian", f"{df['price_per_m2'].median():,.0f} ¥/m²")
 c3.metric("Corridors accessibles & abordables",
           f"{(df['afford_type'] == 'Accessible & abordable').sum():,}")

@@ -82,3 +82,72 @@ def load_poi_shapefiles(shp_dir, patterns=None, bbox=None, to_crs="EPSG:4326"):
     if to_crs and out.crs is not None:
         out = out.to_crs(to_crs)
     return out
+
+
+# --------------------------------------------------------------------------
+# Traduction des sous-types POI Gaode (行业小/行业中) -> libellés français,
+# pour afficher des types concrets dans l'app (ex. "supermarché, épicerie").
+# Ordre = du plus spécifique au plus générique.
+# --------------------------------------------------------------------------
+SUBTYPE_FR = [
+    # courses
+    ("便利店", "épicerie"), ("便民", "épicerie"), ("超市", "supermarché"),
+    ("农副产品", "marché de produits frais"), ("农贸", "marché de produits frais"),
+    ("果品", "marché de fruits"), ("蔬菜", "marché de légumes"),
+    ("水产", "marché aux poissons"), ("海鲜", "marché aux poissons"), ("综合市场", "marché"),
+    # santé
+    ("药", "pharmacie"), ("口腔", "dentiste"), ("眼科", "ophtalmologie"),
+    ("诊所", "clinique"), ("卫生院", "dispensaire"), ("三级甲等", "grand hôpital"),
+    ("专科医院", "hôpital spécialisé"), ("医院", "hôpital"),
+    # école
+    ("幼儿园", "maternelle"), ("小学", "école primaire"), ("中学", "collège/lycée"),
+    ("高等院校", "université"), ("职业技术", "lycée pro"), ("培训", "centre de formation"),
+    # services
+    ("银行", "banque"), ("ATM", "distributeur"), ("证券", "banque"),
+    ("金融保险", "services financiers"), ("邮局", "poste"), ("邮政", "poste"),
+    ("公共厕所", "toilettes publiques"), ("避难", "abri d'urgence"),
+    # parc / sport
+    ("健身", "salle de sport"), ("运动场", "terrain de sport"), ("体育", "sport"),
+    ("公园", "parc"), ("影剧院", "cinéma/théâtre"), ("KTV", "karaoké"),
+    ("酒吧", "bar"), ("网吧", "cybercafé"), ("棋牌", "salle de jeux"),
+    ("娱乐", "divertissement"), ("休闲", "loisirs"), ("采摘", "ferme de cueillette"),
+]
+
+
+def _label_fr(text):
+    for kw, fr in SUBTYPE_FR:
+        if kw in text:
+            return fr
+    return None
+
+
+def types_per_cell(poi, transit, criteria, res, topn=3):
+    """Pour chaque critère, renvoie une Series cell -> 'type1, type2, type3' (libellés FR)."""
+    import h3
+    poi = poi.copy()
+    poi["cell"] = [h3.latlng_to_cell(la, lo, res) for la, lo in zip(poi["lat"], poi["lon"])]
+    txt = poi["行业小"].fillna("") + "|" + poi["行业中"].fillna("")
+    poi["fr"] = [_label_fr(t) for t in txt]
+    cat = poi["行业大"].fillna("") + "|" + poi["行业中"].fillna("") + "|" + poi["行业小"].fillna("")
+
+    def top_labels(sub):
+        sub = sub.dropna(subset=["fr"])
+        if sub.empty:
+            return pd.Series(dtype=object)
+        return (sub.groupby(["cell", "fr"]).size().reset_index(name="n")
+                .sort_values("n", ascending=False).groupby("cell")["fr"]
+                .apply(lambda s: ", ".join(s.head(topn))))
+
+    out = {}
+    for key, spec in criteria.items():
+        if spec.get("source") == "transit":
+            t = transit.copy()
+            tp = t.geometry.representative_point()
+            t["cell"] = [h3.latlng_to_cell(la, lo, res) for la, lo in zip(tp.y.values, tp.x.values)]
+            t["fr"] = t["mode"].map({"metro": "métro", "bus": "bus"})
+            out[key] = top_labels(t)
+        elif "need" in spec:
+            out[key] = top_labels(poi[poi["need"] == spec["need"]])
+        else:
+            out[key] = top_labels(poi[cat.str.contains(spec["match"], regex=True)])
+    return out
