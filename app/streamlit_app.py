@@ -33,11 +33,12 @@ def load_data():
 
 df = load_data()
 
-# Indicateurs cartographiables
+# Indicateurs cartographiables (l'indice pondéré-marche en 1er = vue par défaut, vrai dégradé)
 METRICS = {
-    "Score 15-min /6 (marche ou vélo)": ("baseline_score", 0, 6, "RdYlGn"),
+    "Indice d'accessibilité /100 (pondéré marche)": ("access_index", 0, 100, "RdYlGn"),
+    "Score marche seule /6": ("n_walk", 0, 6, "RdYlGn"),
     "Score complet /7 (+ logement abordable)": ("score_complet_7", 0, 7, "RdYlGn"),
-    "Indice d'accessibilité /100": ("access_index", 0, 100, "RdYlGn"),
+    "Score 15-min /6 (marche OU vélo)": ("baseline_score", 0, 6, "RdYlGn"),
     "Prix médian (¥/m²)": ("price_per_m2", None, None, "viridis_r"),
     "Value score (accès − prix)": ("value_score", -60, 60, "RdYlGn"),
 }
@@ -89,19 +90,42 @@ if reco:
 data["color"] = to_colors(data[col], vmin, vmax, cmap_name, faded=faded)
 data["price_txt"] = data["price_per_m2"].round(0)
 
+
+def build_tip(r):
+    price = r["price_per_m2"]
+    if pd.isna(price):
+        quartier = "<b>Quartier :</b> prix non disponible"
+    else:
+        aff = bool(r["affordable"])
+        quartier = (f"<b>Quartier :</b> {'🟢 abordable' if aff else '🔴 cher'} "
+                    f"— se loger ≈ {price:,.0f} ¥/m²")
+    lines = [quartier,
+             f"<b>Accessibilité :</b> {r['access_index']}/100 (15 min à pied/vélo)",
+             "<i>Services accessibles en 15 min :</i>"]
+    for k, (lab, _) in CRITERIA.items():
+        ok = bool(r.get(f"acc_{k}", False))
+        lines.append(f"{lab} : {'✅' if ok else '❌ &gt;15 min'}")
+    return "<br/>".join(lines)
+
+
+data["tip"] = data.apply(build_tip, axis=1)
+
 # ----------------------------- Main -----------------------------
 st.title("Le 15-minute city à Shanghai : privilège ou réalité accessible ?")
 st.caption(f"Indicateur : **{metric_label}** · {len(df):,} hexagones H3 (résolution 7, ~5 km²) · "
            "distances réseau réelles · marche ≈ 1.2 km, vélo ≈ 3.75 km en 15 min.")
+if col == "baseline_score":
+    st.info("ℹ️ Cette vue (marche **OU** vélo) est verte presque partout : 15 min à vélo ≈ 3.75 km couvrent "
+            "une grande partie de Shanghai dense. Pour voir les vraies différences, choisis **l'indice "
+            "d'accessibilité** ou le **score marche seule** — à pied, l'accès varie beaucoup (école : 26 % seulement).")
 
 layer = pdk.Layer("H3HexagonLayer", data=data, get_hexagon="cell", get_fill_color="color",
                   pickable=True, stroked=True, get_line_color=[255, 255, 255, 40],
                   line_width_min_pixels=0.5, extruded=False)
 view = pdk.ViewState(latitude=31.22, longitude=121.47, zoom=8.4)
-tooltip = {"html": "<b>Accès:</b> {access_index}/100 · <b>Score:</b> {baseline_score}/6<br/>"
-                   "<b>Prix:</b> {price_txt} ¥/m²<br/><b>Type:</b> {afford_type} · "
-                   "<b>Value:</b> {value_score}",
-           "style": {"backgroundColor": "#222", "color": "white"}}
+tooltip = {"html": "{tip}",
+           "style": {"backgroundColor": "#222", "color": "white", "fontSize": "12px",
+                     "padding": "8px", "borderRadius": "6px"}}
 st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view, tooltip=tooltip,
                          map_style="light"), use_container_width=True)
 

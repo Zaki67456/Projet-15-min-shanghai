@@ -45,4 +45,5 @@ _s2_dev.py
 _s2_schema.py
 _s3_dev.py
 _s3_h3test.py
+_check_green.py
 outputs/*.png
