@@ -1,7 +1,12 @@
 # 15-Minute Shanghai — Track C : Affordability
 
+### 🔗 [**▶ Ouvrir l'application en ligne**](https://projet-15-min-shanghai-3u2rnygx3gwo2xfkontzpt.streamlit.app/)
+Carte interactive H3 de Shanghai · accessibilité 15 min × prix du logement.
+
 Analyse de l'accessibilité « ville du quart d'heure » à Shanghai, croisée avec le coût du logement.
 **Question** : le 15-minute city à Shanghai est-il un privilège de riches, ou existe-t-il des corridors *forte accessibilité + faible coût* ?
+
+**Livrables** : 3 notebooks (`notebooks/`) · application Streamlit déployée (lien ci-dessus) · revue de littérature (en tête du notebook 01).
 
 ## Structure
 ```
